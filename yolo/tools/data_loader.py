@@ -13,13 +13,8 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 
 from yolo.config.config import DataConfig, DatasetConfig
-from yolo.tools.data_augmentation import (
-    AugmentationComposer,
-    HorizontalFlip,
-    MixUp,
-    Mosaic,
-    VerticalFlip,
-)
+from yolo.tools.data_augmentation import *
+from yolo.tools.data_augmentation import AugmentationComposer
 from yolo.tools.dataset_preparation import prepare_dataset
 from yolo.utils.dataset_utils import (
     create_image_metadata,
@@ -57,7 +52,7 @@ class YoloDataset(Dataset):
             data = self.filter_data(dataset_path, phase_name)
             torch.save(data, cache_path)
         else:
-            data = torch.load(cache_path)
+            data = torch.load(cache_path, weights_only=False)
             logger.info("📦 Loaded {} cache", phase_name)
         return data
 

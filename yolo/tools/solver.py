@@ -10,9 +10,7 @@ from typing import Dict, Optional
 import torch
 from loguru import logger
 from pycocotools.coco import COCO
-from torch import Tensor
-
-# TODO: We may can't use CUDA?
+from torch import Tensor, distributed
 from torch.cuda.amp import GradScaler, autocast
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
@@ -28,6 +26,7 @@ from yolo.utils.logging_utils import ProgressLogger, log_model_structure
 from yolo.utils.model_utils import (
     ExponentialMovingAverage,
     PostProccess,
+    collect_prediction,
     create_optimizer,
     create_scheduler,
     predicts_to_json,
@@ -87,7 +86,7 @@ class ModelTrainer:
 
     def train_one_epoch(self, dataloader):
         self.model.train()
-        total_loss = defaultdict(lambda: torch.tensor(0.0, device=self.device))
+        total_loss = defaultdict(float)
         total_samples = 0
         self.optimizer.next_epoch(len(dataloader))
         for batch_size, images, targets, *_ in dataloader:
@@ -95,7 +94,9 @@ class ModelTrainer:
             loss_each = self.train_one_batch(images, targets)
 
             for loss_name, loss_val in loss_each.items():
-                total_loss[loss_name] += loss_val * batch_size
+                if self.use_ddp:  # collecting loss for each batch
+                    distributed.all_reduce(loss_val, op=distributed.ReduceOp.AVG)
+                total_loss[loss_name] += loss_val.item() * batch_size
             total_samples += batch_size
             self.progress.one_batch(loss_each)
 
@@ -121,7 +122,7 @@ class ModelTrainer:
             checkpoint["model_state_dict_ema"] = self.model.state_dict()
             self.ema.restore()
 
-        print(f"💾 success save at {file_path}")
+        logger.info(f"💾 success save at {file_path}")
         torch.save(checkpoint, file_path)
 
     def good_epoch(self, mAPs: Dict[str, Tensor]) -> bool:
@@ -146,7 +147,7 @@ class ModelTrainer:
             self.progress.finish_one_epoch(epoch_loss, epoch_idx=epoch_idx)
 
             mAPs = self.validator.solve(self.validation_dataloader, epoch_idx=epoch_idx)
-            if self.good_epoch(mAPs):
+            if mAPs is not None and self.good_epoch(mAPs):
                 self.save_checkpoint(epoch_idx=epoch_idx)
             # TODO: save model if result are better than before
         self.progress.finish_train()
@@ -231,7 +232,7 @@ class ModelValidator:
             if json_path:
                 self.coco_gt = COCO(json_path)
 
-    def solve(self, dataloader, epoch_idx=-1):
+    def solve(self, dataloader, epoch_idx=1):
         # logger.info("🧪 Start Validation!")
         self.model.eval()
         predict_json, mAPs = [], defaultdict(list)
@@ -246,13 +247,17 @@ class ModelValidator:
                     for mAP_key, mAP_val in mAP.items():
                         mAPs[mAP_key].append(mAP_val)
 
-            avg_mAPs = {key: torch.mean(torch.stack(val)) for key, val in mAPs.items()}
+            avg_mAPs = {key: 100 * torch.mean(torch.stack(val)) for key, val in mAPs.items()}
             self.progress.one_batch(avg_mAPs)
 
             predict_json.extend(predicts_to_json(img_paths, predicts, rev_tensor))
         self.progress.finish_one_epoch(avg_mAPs, epoch_idx=epoch_idx)
+        self.progress.visualize_image(images, targets, predicts, epoch_idx=epoch_idx)
 
         with open(self.json_path, "w") as f:
+            predict_json = collect_prediction(predict_json, self.progress.local_rank)
+            if self.progress.local_rank != 0:
+                return
             json.dump(predict_json, f)
         if hasattr(self, "coco_gt"):
             self.progress.start_pycocotools()
