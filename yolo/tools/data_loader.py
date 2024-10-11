@@ -181,7 +181,7 @@ class YoloDataLoader(DataLoader):
         """
         batch_size = len(batch)
         target_sizes = [item[1].size(0) for item in batch]
-        # TODO: Improve readability of these proccess
+        # TODO: Improve readability of these process
         # TODO: remove maxBbox or reduce loss function memory usage
         batch_targets = torch.zeros(batch_size, min(max(target_sizes), 100), 5)
         batch_targets[:, :, 0] = -1
@@ -225,7 +225,9 @@ class StreamDataLoader:
             self.thread = Thread(target=self.load_source)
             self.thread.start()
 
-    def load_source(self):
+    def load_source(self) -> None:
+        assert isinstance(self.source, Path)
+
         if self.source.is_dir():  # image folder
             self.load_image_folder(self.source)
         elif any(self.source.suffix.lower().endswith(ext) for ext in [".mp4", ".avi", ".mkv"]):  # Video file
@@ -233,7 +235,7 @@ class StreamDataLoader:
         else:  # Single image
             self.process_image(self.source)
 
-    def load_image_folder(self, folder):
+    def load_image_folder(self, folder: Union[str, Path]):
         folder_path = Path(folder)
         for file_path in folder_path.rglob("*"):
             if self.stop_event.is_set():
@@ -241,13 +243,13 @@ class StreamDataLoader:
             if file_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
                 self.process_image(file_path)
 
-    def process_image(self, image_path):
+    def process_image(self, image_path: Union[str, Path]) -> None:
         image = Image.open(image_path).convert("RGB")
         if image is None:
             raise ValueError(f"Error loading image: {image_path}")
         self.process_frame(image)
 
-    def load_video_file(self, video_path):
+    def load_video_file(self, video_path) -> None:
         import cv2
 
         cap = cv2.VideoCapture(str(video_path))
@@ -258,7 +260,7 @@ class StreamDataLoader:
             self.process_frame(frame)
         cap.release()
 
-    def process_frame(self, frame):
+    def process_frame(self, frame: Union[Tensor, np.ndarray]) -> None:
         if isinstance(frame, np.ndarray):
             # TODO: we don't need cv2
             import cv2
@@ -292,12 +294,12 @@ class StreamDataLoader:
             except Empty:
                 raise StopIteration
 
-    def stop(self):
+    def stop(self) -> None:
         self.running = False
         if self.is_stream:
             self.cap.release()
         else:
             self.thread.join(timeout=1)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.queue.qsize() if not self.is_stream else 0

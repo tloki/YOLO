@@ -15,35 +15,35 @@ OUT_CHANNELS = 128
 NECK_CHANNELS = 64
 
 
-def test_conv():
+def test_conv() -> None:
     conv = Conv(IN_CHANNELS, OUT_CHANNELS, KERNEL_SIZE)
     x = torch.randn(1, IN_CHANNELS, 64, 64)
     out = conv(x)
     assert out.shape == (1, OUT_CHANNELS, 64, 64)
 
 
-def test_pool_max():
+def test_pool_max() -> None:
     pool = Pool("max", 2, stride=2)
     x = torch.randn(1, IN_CHANNELS, 64, 64)
     out = pool(x)
     assert out.shape == (1, IN_CHANNELS, 32, 32)
 
 
-def test_pool_avg():
+def test_pool_avg() -> None:
     pool = Pool("avg", 2, stride=2)
     x = torch.randn(1, IN_CHANNELS, 64, 64)
     out = pool(x)
     assert out.shape == (1, IN_CHANNELS, 32, 32)
 
 
-def test_adown():
+def test_adown() -> None:
     adown = ADown(IN_CHANNELS, OUT_CHANNELS)
     x = torch.randn(1, IN_CHANNELS, 64, 64)
     out = adown(x)
     assert out.shape == (1, OUT_CHANNELS, 32, 32)
 
 
-def test_cblinear():
+def test_cblinear() -> None:
     cblinear = CBLinear(IN_CHANNELS, [5, 5])
     x = torch.randn(1, IN_CHANNELS, 64, 64)
     outs = cblinear(x)
@@ -52,7 +52,7 @@ def test_cblinear():
     assert outs[1].shape == (1, 5, 64, 64)
 
 
-def test_sppelan():
+def test_sppelan() -> None:
     sppelan = SPPELAN(IN_CHANNELS, OUT_CHANNELS, NECK_CHANNELS)
     x = torch.randn(1, IN_CHANNELS, 64, 64)
     out = sppelan(x)

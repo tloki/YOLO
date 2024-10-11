@@ -1,8 +1,10 @@
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import torch
 from PIL import Image
+from torch import Tensor
 from torchvision.transforms import functional as TF
 
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -16,7 +18,7 @@ from yolo.tools.data_augmentation import (
 )
 
 
-def test_horizontal_flip():
+def test_horizontal_flip() -> None:
     # Create a mock image and bounding boxes
     img = Image.new("RGB", (100, 100), color="red")
     boxes = torch.tensor([[1, 0.05, 0.1, 0.7, 0.9]])  # class, xmin, ymin, xmax, ymax
@@ -32,9 +34,9 @@ def test_horizontal_flip():
     assert torch.allclose(flipped_boxes, expected_boxes), "Bounding boxes were not flipped correctly"
 
 
-def test_compose():
+def test_compose() -> None:
     # Define two mock transforms that simply return the inputs
-    def mock_transform(image, boxes):
+    def mock_transform(image: Image.Image, boxes: Tensor) -> Tuple[Image.Image, Tensor]:
         return image, boxes
 
     compose = AugmentationComposer([mock_transform, mock_transform])
@@ -48,7 +50,7 @@ def test_compose():
     assert torch.equal(transformed_boxes, boxes), "Boxes should not be altered"
 
 
-def test_mosaic():
+def test_mosaic() -> None:
     img = Image.new("RGB", (100, 100), color="green")
     boxes = torch.tensor([[0, 0.25, 0.25, 0.75, 0.75]])
 

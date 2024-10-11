@@ -24,7 +24,7 @@ from yolo.utils.module_utils import (
         ((3, 5), (2, 1), (2, 2)),
     ],
 )
-def test_auto_pad(kernel_size, dilation, expected):
+def test_auto_pad(kernel_size, dilation, expected) -> None:
     assert auto_pad(kernel_size, dilation) == expected, "auto_pad does not calculate padding correctly"
 
 
@@ -32,24 +32,24 @@ def test_auto_pad(kernel_size, dilation, expected):
     "activation_name, expected_type",
     [("ReLU", nn.ReLU), ("leakyrelu", nn.LeakyReLU), ("none", nn.Identity), (None, nn.Identity), (False, nn.Identity)],
 )
-def test_get_activation(activation_name, expected_type):
+def test_get_activation(activation_name, expected_type) -> None:
     result = create_activation_function(activation_name)
     assert isinstance(result, expected_type), f"get_activation does not return correct type for {activation_name}"
 
 
-def test_get_activation_invalid():
+def test_get_activation_invalid() -> None:
     with pytest.raises(ValueError):
         create_activation_function("unsupported_activation")
 
 
-def test_divide_into_chunks():
+def test_divide_into_chunks() -> None:
     input_list = [0, 1, 2, 3, 4, 5]
     chunk_num = 2
     expected_output = [[0, 1, 2], [3, 4, 5]]
     assert divide_into_chunks(input_list, chunk_num) == expected_output
 
 
-def test_divide_into_chunks_non_divisible_length():
+def test_divide_into_chunks_non_divisible_length() -> None:
     input_list = [0, 1, 2, 3, 4, 5]
     chunk_num = 4
     with pytest.raises(
@@ -59,14 +59,14 @@ def test_divide_into_chunks_non_divisible_length():
         divide_into_chunks(input_list, chunk_num)
 
 
-def test_divide_into_chunks_single_chunk():
+def test_divide_into_chunks_single_chunk() -> None:
     input_list = [0, 1, 2, 3, 4, 5]
     chunk_num = 1
     expected_output = [[0, 1, 2, 3, 4, 5]]
     assert divide_into_chunks(input_list, chunk_num) == expected_output
 
 
-def test_divide_into_chunks_equal_chunks():
+def test_divide_into_chunks_equal_chunks() -> None:
     input_list = [0, 1, 2, 3, 4, 5, 6, 7]
     chunk_num = 4
     expected_output = [[0, 1], [2, 3], [4, 5], [6, 7]]

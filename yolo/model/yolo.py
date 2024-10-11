@@ -115,7 +115,7 @@ class YOLO(nn.Module):
         else:
             raise ValueError(f"Unsupported layer type: {layer_type}")
 
-    def save_load_weights(self, weights: Union[Path, OrderedDict]):
+    def save_load_weights(self, weights: Union[Path, OrderedDict]) -> None:
         """
         Update the model's weights with the provided weights.
 
@@ -149,7 +149,7 @@ class YOLO(nn.Module):
         self.model.load_state_dict(model_state_dict)
 
 
-def create_model(model_cfg: ModelConfig, weight_path: Union[bool, Path] = True, class_num: int = 80) -> YOLO:
+def create_model(model_cfg: ModelConfig, weight_path: Union[bool, Path, str, None] = True, class_num: int = 80) -> YOLO:
     """Constructs and returns a model from a Dictionary configuration file.
 
     Args:
@@ -161,7 +161,7 @@ def create_model(model_cfg: ModelConfig, weight_path: Union[bool, Path] = True, 
     OmegaConf.set_struct(model_cfg, False)
     model = YOLO(model_cfg, class_num)
     if weight_path:
-        if weight_path == True:
+        if weight_path is True:
             weight_path = Path("weights") / f"{model_cfg.name}.pt"
         elif isinstance(weight_path, str):
             weight_path = Path(weight_path)

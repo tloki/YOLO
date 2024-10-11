@@ -10,7 +10,7 @@ from loguru import logger
 from yolo.tools.data_conversion import discretize_categories
 
 
-def locate_label_paths(dataset_path: Path, phase_name: Path) -> Tuple[Path, Path]:
+def locate_label_paths(dataset_path: Path, phase_name: Path) -> Union[Tuple[Path, str], Tuple[None, None]]:
     """
     Find the path to label files for a specified dataset and phase(e.g. training).
 
@@ -34,7 +34,7 @@ def locate_label_paths(dataset_path: Path, phase_name: Path) -> Tuple[Path, Path
             return txt_labels_path, "txt"
 
     logger.warning("No labels found in the specified dataset path and phase name.")
-    return [], None
+    return None, None
 
 
 def create_image_metadata(labels_path: str) -> Tuple[Dict[str, List], Dict[str, Dict]]:
@@ -56,7 +56,7 @@ def create_image_metadata(labels_path: str) -> Tuple[Dict[str, List], Dict[str, 
         return annotations_index, image_info_dict
 
 
-def organize_annotations_by_image(data: Dict[str, Any], id_to_idx: Optional[Dict[int, int]]):
+def organize_annotations_by_image(data: Dict[str, Any], id_to_idx: Optional[Dict[int, int]]) -> Dict[int, List[Dict[str, Any]]]:
     """
     Use image index to lookup every annotations
     Args:

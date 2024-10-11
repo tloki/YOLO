@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, cast
 
 import torch
 import torch.nn.functional as F
@@ -46,7 +46,7 @@ def calculate_iou(bbox1, bbox2, metrics="iou") -> Tensor:
     # Calculate IoU
     iou = intersection_area / (union_area + EPS)
     if metrics == "iou":
-        return iou.to(dtype)
+        return cast(Tensor, iou.to(dtype))
 
     # Calculate centroid distance
     cx1 = (bbox1[..., 2] + bbox1[..., 0]) / 2
@@ -75,7 +75,7 @@ def calculate_iou(bbox1, bbox2, metrics="iou") -> Tensor:
     return ciou.to(dtype)
 
 
-def transform_bbox(bbox: Tensor, indicator="xywh -> xyxy"):
+def transform_bbox(bbox: Tensor, indicator="xywh -> xyxy") -> Tensor:
     data_type = bbox.dtype
     in_type, out_type = indicator.replace(" ", "").split("->")
 
@@ -207,7 +207,7 @@ class BoxMatcher:
         topk_masks = topk_targets > 0
         return topk_targets, topk_masks
 
-    def filter_duplicates(self, target_matrix: Tensor):
+    def filter_duplicates(self, target_matrix: Tensor) -> Tensor:
         """
         Filter the maximum suitability target index of each anchor.
 
@@ -292,7 +292,7 @@ class Vec2Box:
         anchor_grid, scaler = generate_anchors(image_size, self.strides)
         self.anchor_grid, self.scaler = anchor_grid.to(self.device), scaler.to(self.device)
 
-    def __call__(self, predicts):
+    def __call__(self, predicts: List[Tensor]) -> Tuple[Tensor, Tensor, Tensor]:
         preds_cls, preds_anc, preds_box = [], [], []
         for layer_output in predicts:
             pred_cls, pred_anc, pred_box = layer_output
@@ -326,7 +326,7 @@ class Anc2Box:
         self.anchor_num = self.anchor_scale.size(2)
         self.class_num = model.num_classes
 
-    def create_auto_anchor(self, model: YOLO, image_size):
+    def create_auto_anchor(self, model: YOLO, image_size) -> List[float]:
         dummy_input = torch.zeros(1, 3, *image_size).to(self.device)
         dummy_output = model(dummy_input)
         strides = []
@@ -335,7 +335,7 @@ class Anc2Box:
             strides.append(image_size[1] // anchor_num[1])
         return strides
 
-    def generate_anchors(self, image_size: List[int]):
+    def generate_anchors(self, image_size: Tuple[int, int]):
         anchor_grids = []
         for stride in self.strides:
             W, H = image_size[0] // stride, image_size[1] // stride
@@ -344,10 +344,10 @@ class Anc2Box:
             anchor_grids.append(anchor_grid)
         return anchor_grids
 
-    def update(self, image_size):
+    def update(self, image_size: Tuple[int, int]) -> None:
         self.anchor_grid = self.generate_anchors(image_size)
 
-    def __call__(self, predicts: List[Tensor]):
+    def __call__(self, predicts: List[Tensor]) -> Tuple[Tensor, None, Tensor, Tensor]:
         preds_box, preds_cls, preds_cnf = [], [], []
         for layer_idx, predict in enumerate(predicts):
             predict = rearrange(predict, "B (L C) h w -> B L h w C", L=self.anchor_num)
@@ -377,7 +377,7 @@ def create_converter(model_version: str = "v9-c", *args, **kwargs) -> Union[Anc2
     return converter
 
 
-def bbox_nms(cls_dist: Tensor, bbox: Tensor, nms_cfg: NMSConfig, confidence: Optional[Tensor] = None):
+def bbox_nms(cls_dist: Tensor, bbox: Tensor, nms_cfg: NMSConfig, confidence: Optional[Tensor] = None) -> List[Tensor]:
     cls_dist = cls_dist.sigmoid() * (1 if confidence is None else confidence)
 
     # filter class by confidence

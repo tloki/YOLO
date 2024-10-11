@@ -1,10 +1,11 @@
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import pytest
 import torch
 from hydra import compose, initialize
-from torch import allclose, float32, isclose, tensor
+from torch import allclose, float32, isclose, tensor, Tensor
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
@@ -24,13 +25,13 @@ EPS = 1e-4
 
 
 @pytest.fixture
-def dummy_bboxes():
+def dummy_bboxes() -> Tuple[Tensor, Tensor]:
     bbox1 = tensor([[50, 80, 150, 140], [30, 20, 100, 80]], dtype=float32)
     bbox2 = tensor([[90, 70, 160, 160], [40, 40, 90, 120]], dtype=float32)
     return bbox1, bbox2
 
 
-def test_calculate_iou_2d(dummy_bboxes):
+def test_calculate_iou_2d(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, bbox2 = dummy_bboxes
     iou = calculate_iou(bbox1, bbox2)
     expected_iou = tensor([[0.4138, 0.1905], [0.0096, 0.3226]])
@@ -38,7 +39,7 @@ def test_calculate_iou_2d(dummy_bboxes):
     assert allclose(iou, expected_iou, atol=EPS)
 
 
-def test_calculate_iou_3d(dummy_bboxes):
+def test_calculate_iou_3d(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, bbox2 = dummy_bboxes
     iou = calculate_iou(bbox1[None], bbox2[None])
     expected_iou = tensor([[0.4138, 0.1905], [0.0096, 0.3226]])
@@ -46,7 +47,7 @@ def test_calculate_iou_3d(dummy_bboxes):
     assert allclose(iou, expected_iou, atol=EPS)
 
 
-def test_calculate_diou(dummy_bboxes):
+def test_calculate_diou(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, bbox2 = dummy_bboxes
     iou = calculate_iou(bbox1, bbox2, "diou")
     expected_diou = tensor([[0.3816, 0.0943], [-0.2048, 0.2622]])
@@ -55,7 +56,7 @@ def test_calculate_diou(dummy_bboxes):
     assert allclose(iou, expected_diou, atol=EPS)
 
 
-def test_calculate_ciou(dummy_bboxes):
+def test_calculate_ciou(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, bbox2 = dummy_bboxes
     iou = calculate_iou(bbox1, bbox2, metrics="ciou")
     # TODO: check result!
@@ -67,14 +68,14 @@ def test_calculate_ciou(dummy_bboxes):
     bbox2 = tensor([[90, 70, 160, 160], [40, 40, 90, 120]], dtype=float32)
 
 
-def test_transform_bbox_xywh_to_Any(dummy_bboxes):
+def test_transform_bbox_xywh_to_Any(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, _ = dummy_bboxes
     transformed_bbox = transform_bbox(bbox1, "xywh -> xyxy")
     expected_bbox = tensor([[50.0, 80.0, 200.0, 220.0], [30.0, 20.0, 130.0, 100.0]])
     assert allclose(transformed_bbox, expected_bbox)
 
 
-def test_transform_bbox_xycwh_to_Any(dummy_bboxes):
+def test_transform_bbox_xycwh_to_Any(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, bbox2 = dummy_bboxes
     transformed_bbox = transform_bbox(bbox1, "xycwh -> xycwh")
     assert allclose(transformed_bbox, bbox1)
@@ -84,7 +85,7 @@ def test_transform_bbox_xycwh_to_Any(dummy_bboxes):
     assert allclose(transformed_bbox, expected_bbox)
 
 
-def test_transform_bbox_xyxy_to_Any(dummy_bboxes):
+def test_transform_bbox_xyxy_to_Any(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox1, bbox2 = dummy_bboxes
     transformed_bbox = transform_bbox(bbox1, "xyxy -> xyxy")
     assert allclose(transformed_bbox, bbox1)
@@ -94,7 +95,7 @@ def test_transform_bbox_xyxy_to_Any(dummy_bboxes):
     assert allclose(transformed_bbox, expected_bbox)
 
 
-def test_transform_bbox_invalid_format(dummy_bboxes):
+def test_transform_bbox_invalid_format(dummy_bboxes: Tuple[Tensor, Tensor]) -> None:
     bbox, _ = dummy_bboxes
 
     # Test invalid input format
@@ -106,7 +107,7 @@ def test_transform_bbox_invalid_format(dummy_bboxes):
         transform_bbox(bbox, "xywh->invalid")
 
 
-def test_generate_anchors():
+def test_generate_anchors() -> None:
     image_size = [256, 256]
     strides = [8, 16, 32]
     anchors, scalers = generate_anchors(image_size, strides)
@@ -114,7 +115,7 @@ def test_generate_anchors():
     assert anchors.shape[1] == 2
 
 
-def test_vec2box_autoanchor():
+def test_vec2box_autoanchor() -> None:
     with initialize(config_path="../../yolo/config", version_base=None):
         cfg: Config = compose(config_name="config", overrides=["model=v9-m"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,7 +128,7 @@ def test_vec2box_autoanchor():
     assert vec2box.scaler.shape == tuple([4200])
 
 
-def test_anc2box_autoanchor(inference_v7_cfg: Config):
+def test_anc2box_autoanchor(inference_v7_cfg: Config) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(inference_v7_cfg.model, weight_path=None).to(device)
     anchor_cfg: AnchorConfig = inference_v7_cfg.model.anchor.copy()
@@ -145,7 +146,7 @@ def test_anc2box_autoanchor(inference_v7_cfg: Config):
     assert anc2box.anchor_scale.shape == torch.Size([3, 1, 3, 1, 1, 2])
 
 
-def test_bbox_nms():
+def test_bbox_nms() -> None:
     cls_dist = tensor(
         [[[0.1, 0.7, 0.2], [0.6, 0.3, 0.1]], [[0.4, 0.4, 0.2], [0.5, 0.4, 0.1]]]  # Example class distribution
     )
@@ -170,7 +171,7 @@ def test_bbox_nms():
         assert allclose(out, exp, atol=1e-4), f"Output: {out} Expected: {exp}"
 
 
-def test_calculate_map():
+def test_calculate_map() -> None:
     predictions = tensor([[0, 60, 60, 160, 160, 0.5], [0, 40, 40, 120, 120, 0.5]])  # [class, x1, y1, x2, y2]
     ground_truths = tensor([[0, 50, 50, 150, 150], [0, 30, 30, 100, 100]])  # [class, x1, y1, x2, y2]
 

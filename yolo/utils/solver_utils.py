@@ -1,5 +1,6 @@
 import contextlib
 import io
+from typing import Optional, List
 
 import numpy as np
 from pycocotools.coco import COCO
@@ -17,7 +18,10 @@ def calculate_ap(coco_gt: COCO, pd_path):
     return coco_eval.stats
 
 
-def make_ap_table(score, past_result=[], last_score=None, epoch=-1):
+def make_ap_table(score, past_result=Optional[List], last_score=None, epoch=-1):
+    if past_result is None:
+        past_result = []
+
     ap_table = Table()
     ap_table.add_column("Epoch", justify="center", style="white", width=5)
     ap_table.add_column("Avg. Precision", justify="left", style="cyan")

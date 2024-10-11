@@ -5,7 +5,7 @@ import os
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple, Union
 
 import torch
 from loguru import logger
@@ -20,12 +20,12 @@ from yolo.model.yolo import YOLO
 from yolo.tools.data_loader import StreamDataLoader, create_dataloader
 from yolo.tools.drawer import draw_bboxes, draw_model
 from yolo.tools.loss_functions import create_loss_function
-from yolo.utils.bounding_box_utils import Vec2Box, calculate_map
+from yolo.utils.bounding_box_utils import Vec2Box, calculate_map, Anc2Box
 from yolo.utils.dataset_utils import locate_label_paths
 from yolo.utils.logging_utils import ProgressLogger, log_model_structure
 from yolo.utils.model_utils import (
     ExponentialMovingAverage,
-    PostProccess,
+    PostProcess,
     collect_prediction,
     create_optimizer,
     create_scheduler,
@@ -35,7 +35,7 @@ from yolo.utils.solver_utils import calculate_ap
 
 
 class ModelTrainer:
-    def __init__(self, cfg: Config, model: YOLO, vec2box: Vec2Box, progress: ProgressLogger, device, use_ddp: bool):
+    def __init__(self, cfg: Config, model: YOLO, vec2box: Union[Vec2Box, Anc2Box], progress: ProgressLogger, device, use_ddp: bool):
         train_cfg: TrainConfig = cfg.task
         self.model = model if not use_ddp else DDP(model, device_ids=[device])
         self.use_ddp = use_ddp
@@ -66,7 +66,7 @@ class ModelTrainer:
             self.ema = None
         self.scaler = GradScaler()
 
-    def train_one_batch(self, images: Tensor, targets: Tensor):
+    def train_one_batch(self, images: Tensor, targets: Tensor) -> Dict[str, Tensor]:
         images, targets = images.to(self.device), targets.to(self.device)
         self.optimizer.zero_grad()
 
@@ -108,7 +108,7 @@ class ModelTrainer:
 
         return total_loss
 
-    def save_checkpoint(self, epoch_idx: int, file_name: Optional[str] = None):
+    def save_checkpoint(self, epoch_idx: int, file_name: Optional[str] = None) -> None:
         file_name = file_name or f"E{epoch_idx:03d}.pt"
         file_path = self.weights_dir / file_name
 
@@ -133,7 +133,7 @@ class ModelTrainer:
                 save_flag = False
         return save_flag
 
-    def solve(self, dataloader: DataLoader):
+    def solve(self, dataloader: DataLoader) -> None:
         logger.info("🚄 Start Training!")
         num_epochs = self.num_epochs
 
@@ -154,18 +154,18 @@ class ModelTrainer:
 
 
 class ModelTester:
-    def __init__(self, cfg: Config, model: YOLO, vec2box: Vec2Box, progress: ProgressLogger, device):
+    def __init__(self, cfg: Config, model: YOLO, vec2box: Union[Vec2Box, Anc2Box], progress: ProgressLogger, device: torch.device) -> None:
         self.model = model
         self.device = device
         self.progress = progress
 
-        self.post_proccess = PostProccess(vec2box, cfg.task.nms)
+        self.post_process = PostProcess(vec2box, cfg.task.nms)
         self.save_path = progress.save_path / "images"
         os.makedirs(self.save_path, exist_ok=True)
         self.save_predict = getattr(cfg.task, "save_predict", None)
         self.idx2label = cfg.dataset.class_list
 
-    def solve(self, dataloader: StreamDataLoader):
+    def solve(self, dataloader: StreamDataLoader) -> None:
         logger.info("👀 Start Inference!")
         if isinstance(self.model, torch.nn.Module):
             self.model.eval()
@@ -181,7 +181,7 @@ class ModelTester:
                 rev_tensor = rev_tensor.to(self.device)
                 with torch.no_grad():
                     predicts = self.model(images)
-                    predicts = self.post_proccess(predicts, rev_tensor)
+                    predicts = self.post_process(predicts, rev_tensor)
                 img = draw_bboxes(origin_frame, predicts, idx2label=self.idx2label)
 
                 if dataloader.is_stream:
@@ -218,12 +218,12 @@ class ModelValidator:
         vec2box: Vec2Box,
         progress: ProgressLogger,
         device,
-    ):
+    ) -> None:
         self.model = model
         self.device = device
         self.progress = progress
 
-        self.post_proccess = PostProccess(vec2box, validation_cfg.nms)
+        self.post_process = PostProcess(vec2box, validation_cfg.nms)
         self.json_path = self.progress.save_path / "predict.json"
 
         with contextlib.redirect_stdout(io.StringIO()):
@@ -232,7 +232,7 @@ class ModelValidator:
             if json_path:
                 self.coco_gt = COCO(json_path)
 
-    def solve(self, dataloader, epoch_idx=1):
+    def solve(self, dataloader, epoch_idx=1) -> Optional[Dict[str, Tensor]]:
         # logger.info("🧪 Start Validation!")
         self.model.eval()
         predict_json, mAPs = [], defaultdict(list)
@@ -241,7 +241,7 @@ class ModelValidator:
             images, targets, rev_tensor = images.to(self.device), targets.to(self.device), rev_tensor.to(self.device)
             with torch.no_grad():
                 predicts = self.model(images)
-                predicts = self.post_proccess(predicts)
+                predicts = self.post_process(predicts)
                 for idx, predict in enumerate(predicts):
                     mAP = calculate_map(predict, targets[idx])
                     for mAP_key, mAP_val in mAP.items():
@@ -257,7 +257,7 @@ class ModelValidator:
         with open(self.json_path, "w") as f:
             predict_json = collect_prediction(predict_json, self.progress.local_rank)
             if self.progress.local_rank != 0:
-                return
+                return None
             json.dump(predict_json, f)
         if hasattr(self, "coco_gt"):
             self.progress.start_pycocotools()

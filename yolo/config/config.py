@@ -13,7 +13,7 @@ class AnchorConfig:
 
 
 @dataclass
-class LayerConfg:
+class LayerConfig:
     args: Dict
     source: Union[int, str, List[int]]
     tags: str
@@ -21,7 +21,7 @@ class LayerConfg:
 
 @dataclass
 class BlockConfig:
-    block: List[Dict[str, LayerConfg]]
+    block: List[Dict[str, LayerConfig]]
 
 
 @dataclass
@@ -102,8 +102,8 @@ class EMAConfig:
 
 @dataclass
 class NMSConfig:
-    min_confidence: int
-    min_iou: int
+    min_confidence: float
+    min_iou: float
 
 
 @dataclass
@@ -111,7 +111,7 @@ class InferenceConfig:
     task: str
     nms: NMSConfig
     data: DataConfig
-    fast_inference: Optional[None]
+    fast_inference: Optional[str]
     save_predict: bool
 
 
@@ -165,7 +165,7 @@ class YOLOLayer(nn.Module):
     usable: bool
 
 
-IDX_TO_ID = [
+COCO_IDX_TO_ID = [
     1,
     2,
     3,

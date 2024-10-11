@@ -19,7 +19,7 @@ from yolo.utils.model_utils import get_device
 
 
 @hydra.main(config_path="config", config_name="config", version_base=None)
-def main(cfg: Config):
+def main(cfg: Config) -> None:
     progress = ProgressLogger(cfg, exp_name=cfg.name)
     device, use_ddp = get_device(cfg.device)
     dataloader = create_dataloader(cfg.task.data, cfg.dataset, cfg.task.task, use_ddp)
@@ -28,7 +28,7 @@ def main(cfg: Config):
 
     converter = create_converter(cfg.model.name, model, cfg.model.anchor, cfg.image_size, device)
 
-    solver = ModelTrainer(cfg, model, converter, progress, device)
+    solver = ModelTrainer(cfg, model, converter, progress, device, use_ddp)
     progress.start()
     solver.solve(dataloader)
 

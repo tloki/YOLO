@@ -10,7 +10,7 @@ from yolo.config.config import Config
 from yolo.tools.dataset_preparation import prepare_dataset, prepare_weight
 
 
-def test_prepare_dataset(train_cfg: Config):
+def test_prepare_dataset(train_cfg: Config) -> None:
     dataset_path = Path("tests/data")
     if dataset_path.exists():
         shutil.rmtree(dataset_path)
@@ -26,5 +26,5 @@ def test_prepare_dataset(train_cfg: Config):
     assert "instances_train.json" in os.listdir(annotations_path)
 
 
-def test_prepare_weight():
+def test_prepare_weight() -> None:
     prepare_weight()

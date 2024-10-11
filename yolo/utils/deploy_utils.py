@@ -1,15 +1,17 @@
 from pathlib import Path
+from typing import Dict, List
 
+import numpy as np
 import torch
 from loguru import logger
 from torch import Tensor
 
 from yolo.config.config import Config
-from yolo.model.yolo import create_model
+from yolo.model.yolo import create_model, YOLO
 
 
 class FastModelLoader:
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
         self.compiler = cfg.task.fast_inference
         self.class_num = cfg.dataset.class_num
@@ -27,7 +29,7 @@ class FastModelLoader:
             logger.warning("🍎 TensorRT does not support MPS devices. Using original model.")
             self.compiler = None
 
-    def load_model(self, device):
+    def load_model(self, device: torch.device) -> YOLO:
         if self.compiler == "onnx":
             return self._load_onnx_model(device)
         elif self.compiler == "trt":
@@ -39,7 +41,7 @@ class FastModelLoader:
     def _load_onnx_model(self, device):
         from onnxruntime import InferenceSession
 
-        def onnx_forward(self: InferenceSession, x: Tensor):
+        def onnx_forward(self: InferenceSession, x: Tensor) -> Dict[str, List[List[Tensor]]]:
             x = {self.get_inputs()[0].name: x.cpu().numpy()}
             model_outputs, layer_output = [], []
             for idx, predict in enumerate(self.run(None, x)):

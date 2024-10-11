@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 
 import torch
 import torch.nn.functional as F
@@ -130,7 +130,7 @@ class DualLoss:
             "BCELoss": self.cls_rate * (aux_cls * self.aux_rate + main_cls),
         }
         loss_sum = sum(list(loss_dict.values())) / len(loss_dict)
-        return loss_sum, loss_dict
+        return cast(Tensor, loss_sum), cast(Dict[str, Tensor], loss_dict)
 
 
 def create_loss_function(cfg: Config, vec2box) -> DualLoss:

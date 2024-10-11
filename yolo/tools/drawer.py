@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
+from torch import Tensor
 from torchvision.transforms.functional import to_pil_image
 
 from yolo.config.config import ModelConfig
@@ -13,10 +14,10 @@ from yolo.model.yolo import YOLO
 
 def draw_bboxes(
     img: Union[Image.Image, torch.Tensor],
-    bboxes: List[List[Union[int, float]]],
+    bboxes: Union[List[List[Union[int, float]]], List[Tensor]],
     *,
     idx2label: Optional[list] = None,
-):
+) -> Image.Image:
     """
     Draw bounding boxes on an image.
 

@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TextIO
 
 from rich.progress import track
 
@@ -32,7 +32,7 @@ def process_annotations(
                 process_annotation(annotation, image_info_dict[image_id], id_to_idx, file)
 
 
-def process_annotation(annotation: Dict, image_dims: tuple, id_to_idx: Optional[Dict[int, int]], file) -> None:
+def process_annotation(annotation: Dict, image_dims: tuple, id_to_idx: Optional[Dict[int, int]], file: TextIO) -> None:
     """
     Convert a single annotation's segmentation and write it to the open file handle.
     """

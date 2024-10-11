@@ -9,7 +9,7 @@ from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
 from yolo.config.config import DatasetConfig
 
 
-def download_file(url, destination: Path):
+def download_file(url: str, destination: Path) -> None:
     """
     Downloads a file from the specified URL to the destination path with progress logging.
     """
@@ -33,7 +33,7 @@ def download_file(url, destination: Path):
     logger.info("✅ Download completed.")
 
 
-def unzip_file(source: Path, destination: Path):
+def unzip_file(source: Path, destination: Path) -> None:
     """
     Extracts a ZIP file to the specified directory and removes the ZIP file after extraction.
     """
@@ -82,7 +82,7 @@ def prepare_dataset(dataset_cfg: DatasetConfig, task: str):
                 logger.error(f"Error verifying the {dataset_type} dataset after extraction.")
 
 
-def prepare_weight(download_link: Optional[str] = None, weight_path: Path = Path("v9-c.pt")):
+def prepare_weight(download_link: Optional[str] = None, weight_path: Path = Path("v9-c.pt")) -> None:
     weight_name = weight_path.name
     if download_link is None:
         download_link = "https://github.com/WongKinYiu/yolov9mit/releases/download/v1.0-alpha/"

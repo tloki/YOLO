@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union, Tuple
 
 import torch
 import torch.distributed as dist
@@ -10,7 +10,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR, SequentialLR, _LRScheduler
 
-from yolo.config.config import IDX_TO_ID, NMSConfig, OptimizerConfig, SchedulerConfig
+from yolo.config.config import COCO_IDX_TO_ID, NMSConfig, OptimizerConfig, SchedulerConfig
 from yolo.model.yolo import YOLO
 from yolo.utils.bounding_box_utils import bbox_nms, transform_bbox
 
@@ -21,19 +21,19 @@ class ExponentialMovingAverage:
         self.decay = decay
         self.shadow = {name: param.clone().detach() for name, param in model.named_parameters()}
 
-    def update(self):
+    def update(self) -> None:
         """Update the shadow parameters using the current model parameters."""
         for name, param in self.model.named_parameters():
             assert name in self.shadow, "All model parameters should have a corresponding shadow parameter."
             new_average = (1.0 - self.decay) * param.data + self.decay * self.shadow[name]
             self.shadow[name] = new_average.clone()
 
-    def apply_shadow(self):
+    def apply_shadow(self) -> None:
         """Apply the shadow parameters to the model."""
         for name, param in self.model.named_parameters():
             param.data.copy_(self.shadow[name])
 
-    def restore(self):
+    def restore(self) -> None:
         """Restore the original parameters from the shadow."""
         for name, param in self.model.named_parameters():
             self.shadow[name].copy_(param.data)
@@ -63,7 +63,7 @@ def create_optimizer(model: YOLO, optim_cfg: OptimizerConfig) -> Optimizer:
         self.batch_num = batch_num
         self.batch_idx = 0
 
-    def next_batch(self):
+    def next_batch(self) -> None:
         self.batch_idx += 1
         for lr_idx, param_group in enumerate(self.param_groups):
             min_lr, max_lr = self.min_lr[lr_idx], self.max_lr[lr_idx]
@@ -104,7 +104,7 @@ def initialize_distributed() -> None:
     return local_rank
 
 
-def get_device(device_spec: Union[str, int, List[int]]) -> torch.device:
+def get_device(device_spec: Union[str, int, List[int]]) -> Tuple[torch.device, bool]:
     ddp_flag = False
     if isinstance(device_spec, (list, ListConfig)):
         ddp_flag = True
@@ -120,7 +120,7 @@ def get_device(device_spec: Union[str, int, List[int]]) -> torch.device:
     return device, ddp_flag
 
 
-class PostProccess:
+class PostProcess:
     """
     TODO: function document
     scale back the prediction and do nms for pred_bbox
@@ -173,7 +173,7 @@ def predicts_to_json(img_paths, predicts, rev_tensor):
         for cls, *pos, conf in bboxes:
             bbox = {
                 "image_id": int(Path(img_path).stem),
-                "category_id": IDX_TO_ID[int(cls)],
+                "category_id": COCO_IDX_TO_ID[int(cls)],
                 "bbox": [float(p) for p in pos],
                 "score": float(conf),
             }

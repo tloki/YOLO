@@ -44,7 +44,7 @@ from yolo.tools.drawer import draw_bboxes
 from yolo.utils.solver_utils import make_ap_table
 
 
-def custom_logger(quite: bool = False):
+def custom_logger(quite: bool = False) -> None:
     logger.remove()
     if quite:
         return
@@ -110,19 +110,19 @@ class ProgressLogger(Progress):
 
         return wrapper
 
-    def get_renderable(self):
+    def get_renderable(self) -> Group:
         renderable = Group(*self.get_renderables(), self.ap_table)
         return renderable
 
     @rank_check
-    def start_train(self, num_epochs: int):
+    def start_train(self, num_epochs: int) -> None:
         self.task_epoch = self.add_task(f"[cyan]Start Training {num_epochs} epochs", total=num_epochs)
         self.update(self.task_epoch, advance=-0.5)
 
     @rank_check
     def start_one_epoch(
         self, num_batches: int, task: str = "Train", optimizer: Optimizer = None, epoch_idx: int = None
-    ):
+    ) -> None:
         self.num_batches = num_batches
         self.task = task
         if hasattr(self, "task_epoch"):
@@ -142,7 +142,7 @@ class ProgressLogger(Progress):
         self.batch_task = self.add_task(f"[green] Phase: {task}", total=num_batches)
 
     @rank_check
-    def one_batch(self, batch_info: Dict[str, Tensor] = None):
+    def one_batch(self, batch_info: Dict[str, Tensor] = None) -> None:
         epoch_descript = "[cyan]" + self.task + "[white] |"
         batch_descript = "|"
         if self.task == "Train":
@@ -154,8 +154,8 @@ class ProgressLogger(Progress):
         if hasattr(self, "task_epoch"):
             self.update(self.task_epoch, description=epoch_descript)
 
-    @rank_check
-    def finish_one_epoch(self, batch_info: Dict[str, Any] = None, epoch_idx: int = -1):
+    @rank_check()
+    def finish_one_epoch(self, batch_info: Dict[str, Any] = None, epoch_idx: int = -1) -> None:
         if self.task == "Train":
             prefix = "Loss"
         elif self.task == "Validate":
@@ -214,11 +214,11 @@ class ProgressLogger(Progress):
                 self.tb_writer.add_image("Media/Prediction", pil_to_tensor(draw_bboxes(images, pred_boxes)), epoch_idx)
 
     @rank_check
-    def start_pycocotools(self):
+    def start_pycocotools(self) -> None:
         self.batch_task = self.add_task("[green]Run pycocotools", total=1)
 
     @rank_check
-    def finish_pycocotools(self, result, epoch_idx=-1):
+    def finish_pycocotools(self, result, epoch_idx=-1) -> None:
         ap_table, ap_main = make_ap_table(result * 100, self.ap_past_list, self.last_result, epoch_idx)
         self.last_result = np.maximum(result, self.last_result)
         self.ap_past_list.append((epoch_idx, ap_main))
@@ -236,7 +236,7 @@ class ProgressLogger(Progress):
         self.remove_task(self.batch_task)
 
     @rank_check
-    def finish_train(self):
+    def finish_train(self) -> None:
         self.remove_task(self.task_epoch)
         self.stop()
         if self.use_wandb:
@@ -245,14 +245,14 @@ class ProgressLogger(Progress):
             self.tb_writer.close()
 
 
-def custom_wandb_log(string="", level=int, newline=True, repeat=True, prefix=True, silent=False):
+def custom_wandb_log(string="", level=int, newline=True, repeat=True, prefix=True, silent=False) -> None:
     if silent:
         return
     for line in string.split("\n"):
         logger.opt(raw=not newline, colors=True).info("🌐 " + line)
 
 
-def log_model_structure(model: Union[ModuleList, YOLOLayer, YOLO]):
+def log_model_structure(model: Union[ModuleList, YOLOLayer, YOLO]) -> None:
     if isinstance(model, YOLO):
         model = model.model
     console = Console()

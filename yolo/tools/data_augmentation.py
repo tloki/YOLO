@@ -1,13 +1,16 @@
+from typing import Tuple
+
 import numpy as np
 import torch
 from PIL import Image
+from torch import Tensor
 from torchvision.transforms import functional as TF
 
 
 class AugmentationComposer:
     """Composes several transforms together."""
 
-    def __init__(self, transforms, image_size: int = [640, 640]):
+    def __init__(self, transforms, image_size: Tuple[int, int] = (640, 640)):
         self.transforms = transforms
         # TODO: handle List of image_size [640, 640]
         self.image_size = image_size
@@ -17,7 +20,7 @@ class AugmentationComposer:
             if hasattr(transform, "set_parent"):
                 transform.set_parent(self)
 
-    def __call__(self, image, boxes=torch.zeros(0, 5)):
+    def __call__(self, image: Image.Image, boxes: Tensor=torch.zeros(0, 5)) -> Tuple[Tensor, Tensor, Tensor]:
         for transform in self.transforms:
             image, boxes = transform(image, boxes)
         image, boxes, rev_tensor = self.pad_resize(image, boxes)
@@ -28,7 +31,7 @@ class AugmentationComposer:
 class RemoveOutliers:
     """Removes outlier bounding boxes that are too small or have invalid dimensions."""
 
-    def __init__(self, min_box_area=1e-8):
+    def __init__(self, min_box_area=1e-8) -> None:
         """
         Args:
             min_box_area (float): Minimum area for a box to be kept, as a fraction of the image area.
@@ -52,12 +55,12 @@ class RemoveOutliers:
 
 
 class PadAndResize:
-    def __init__(self, image_size, background_color=(114, 114, 114)):
+    def __init__(self, image_size, background_color=(114, 114, 114)) -> None:
         """Initialize the object with the target image size."""
         self.target_width, self.target_height = image_size
         self.background_color = background_color
 
-    def __call__(self, image: Image, boxes):
+    def __call__(self, image: Image, boxes: Tensor) -> Tuple[Image.Image, Tensor, Tensor]:
         img_width, img_height = image.size
         scale = min(self.target_width / img_width, self.target_height / img_height)
         new_width, new_height = int(img_width * scale), int(img_height * scale)
@@ -79,10 +82,10 @@ class PadAndResize:
 class HorizontalFlip:
     """Randomly horizontally flips the image along with the bounding boxes."""
 
-    def __init__(self, prob=0.5):
+    def __init__(self, prob=0.5) -> None:
         self.prob = prob
 
-    def __call__(self, image, boxes):
+    def __call__(self, image, boxes) -> Tuple[Image.Image]:
         if torch.rand(1) < self.prob:
             image = TF.hflip(image)
             boxes[:, [1, 3]] = 1 - boxes[:, [3, 1]]
@@ -92,7 +95,7 @@ class HorizontalFlip:
 class VerticalFlip:
     """Randomly vertically flips the image along with the bounding boxes."""
 
-    def __init__(self, prob=0.5):
+    def __init__(self, prob=0.5) -> None:
         self.prob = prob
 
     def __call__(self, image, boxes):

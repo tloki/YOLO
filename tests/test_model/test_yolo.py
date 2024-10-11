@@ -16,7 +16,7 @@ config_path = "../../yolo/config"
 config_name = "config"
 
 
-def test_build_model_v9c():
+def test_build_model_v9c() -> None:
     with initialize(config_path=config_path, version_base=None):
         cfg: Config = compose(config_name=config_name)
 
@@ -26,7 +26,7 @@ def test_build_model_v9c():
         assert len(model.model) == 39
 
 
-def test_build_model_v9m():
+def test_build_model_v9m() -> None:
     with initialize(config_path=config_path, version_base=None):
         cfg: Config = compose(config_name=config_name, overrides=[f"model=v9-m"])
 
@@ -36,7 +36,7 @@ def test_build_model_v9m():
         assert len(model.model) == 39
 
 
-def test_build_model_v7():
+def test_build_model_v7() -> None:
     with initialize(config_path=config_path, version_base=None):
         cfg: Config = compose(config_name=config_name, overrides=[f"model=v7"])
 
@@ -55,18 +55,18 @@ def cfg() -> Config:
 
 
 @pytest.fixture
-def model(cfg: Config):
+def model(cfg: Config) -> YOLO:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(cfg.model, weight_path=None)
     return model.to(device)
 
 
-def test_model_basic_status(model):
+def test_model_basic_status(model: YOLO) -> None:
     assert isinstance(model, YOLO)
     assert len(model.model) == 39
 
 
-def test_yolo_forward_output_shape(model):
+def test_yolo_forward_output_shape(model: YOLO) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # 2 - batch size, 3 - number of channels, 640x640 - image dimensions
     dummy_input = torch.rand(2, 3, 640, 640, device=device)

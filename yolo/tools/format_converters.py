@@ -1,4 +1,7 @@
-def convert_weight(old_state_dict, new_state_dict, model_size: int = 38):
+from typing import Dict, cast
+
+
+def convert_weight(old_state_dict: Dict[str, float], new_state_dict: Dict[str, float], model_size: int = 38) -> Dict[str, float]:
     # TODO: need to refactor
     shift = 1
     for idx in range(model_size):
@@ -52,7 +55,7 @@ SPP_converter = {
 REP_converter = {"conv1": "rbr_dense", "conv2": "rbr_1x1", "conv": "0", "bn": "1"}
 
 
-def convert_weight_v7(old_state_dict, new_state_dict):
+def convert_weight_v7(old_state_dict: Dict[str, float], new_state_dict: Dict[str, float]) -> Dict[str, float]:
     map_weight = []
     for key_name in new_state_dict.keys():
         new_shape = new_state_dict[key_name].shape
@@ -88,7 +91,7 @@ def convert_weight_v7(old_state_dict, new_state_dict):
 replace_dict = {"cv": "conv", ".m.": ".bottleneck."}
 
 
-def convert_weight_seg(old_state_dict, new_state_dict):
+def convert_weight_seg(old_state_dict: Dict[str], new_state_dict: Dict[str]) -> Dict[str]:
     diff = -1
     for old_weight_name in old_state_dict.keys():
         old_idx = int(old_weight_name.split(".")[1])

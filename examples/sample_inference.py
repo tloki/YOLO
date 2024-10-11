@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import cast
 
 import hydra
 
@@ -20,7 +21,7 @@ from yolo.utils.model_utils import get_device
 
 
 @hydra.main(config_path="config", config_name="config", version_base=None)
-def main(cfg: Config):
+def main(cfg: Config) -> None:
     progress = ProgressLogger(cfg, exp_name=cfg.name)
     device, use_ddp = get_device(cfg.device)
     dataloader = create_dataloader(cfg.task.data, cfg.dataset, cfg.task.task, use_ddp)
@@ -30,6 +31,7 @@ def main(cfg: Config):
         model = create_model(cfg.model, class_num=cfg.dataset.class_num, weight_path=cfg.weight)
         model = model.to(device)
 
+    assert cfg.model.name is not None
     converter = create_converter(cfg.model.name, model, cfg.model.anchor, cfg.image_size, device)
 
     solver = ModelTester(cfg, model, converter, progress, device)

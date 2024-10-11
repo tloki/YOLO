@@ -22,7 +22,7 @@ class Conv(nn.Module):
         *,
         activation: Optional[str] = "SiLU",
         **kwargs,
-    ):
+    ) -> None:
         super().__init__()
         kwargs.setdefault("padding", auto_pad(kernel_size, **kwargs))
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, bias=False, **kwargs)
@@ -36,7 +36,7 @@ class Conv(nn.Module):
 class Pool(nn.Module):
     """A generic pooling block supporting 'max' and 'avg' pooling methods."""
 
-    def __init__(self, method: str = "max", kernel_size: _size_2_t = 2, **kwargs):
+    def __init__(self, method: str = "max", kernel_size: _size_2_t = 2, **kwargs) -> None:
         super().__init__()
         kwargs.setdefault("padding", auto_pad(kernel_size, **kwargs))
         pool_classes = {"max": nn.MaxPool2d, "avg": nn.AvgPool2d}
@@ -47,11 +47,11 @@ class Pool(nn.Module):
 
 
 class Concat(nn.Module):
-    def __init__(self, dim=1):
+    def __init__(self, dim=1) -> None:
         super(Concat, self).__init__()
         self.dim = dim
 
-    def forward(self, x):
+    def forward(self, x) -> Tensor:
         return torch.cat(x, self.dim)
 
 
@@ -59,7 +59,7 @@ class Concat(nn.Module):
 class Detection(nn.Module):
     """A single YOLO Detection head for detection models"""
 
-    def __init__(self, in_channels: Tuple[int], num_classes: int, *, reg_max: int = 16, use_group: bool = True):
+    def __init__(self, in_channels: Tuple[int], num_classes: int, *, reg_max: int = 16, use_group: bool = True) -> None:
         super().__init__()
 
         groups = 4 if use_group else 1
@@ -83,7 +83,7 @@ class Detection(nn.Module):
         self.anchor_conv[-1].bias.data.fill_(1.0)
         self.class_conv[-1].bias.data.fill_(-10)  # TODO: math.log(5 * 4 ** idx / 80 ** 3)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor]:
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         anchor_x = self.anchor_conv(x)
         class_x = self.class_conv(x)
         anchor_x, vector_x = self.anc2vec(anchor_x)
@@ -91,7 +91,7 @@ class Detection(nn.Module):
 
 
 class IDetection(nn.Module):
-    def __init__(self, in_channels: Tuple[int], num_classes: int, *args, anchor_num: int = 3, **kwargs):
+    def __init__(self, in_channels: Tuple[int], num_classes: int, *args, anchor_num: int = 3, **kwargs) -> None:
         super().__init__()
 
         if isinstance(in_channels, tuple):
@@ -104,7 +104,7 @@ class IDetection(nn.Module):
         self.implicit_a = ImplicitA(in_channels)
         self.implicit_m = ImplicitM(out_channels)
 
-    def forward(self, x):
+    def forward(self, x) -> Tensor:
         x = self.implicit_a(x)
         x = self.head_conv(x)
         x = self.implicit_m(x)
@@ -115,7 +115,7 @@ class IDetection(nn.Module):
 class MultiheadDetection(nn.Module):
     """Mutlihead Detection module for Dual detect or Triple detect"""
 
-    def __init__(self, in_channels: List[int], num_classes: int, **head_kwargs):
+    def __init__(self, in_channels: List[int], num_classes: int, **head_kwargs) -> None:
         super().__init__()
         DetectionHead = Detection
 
@@ -131,13 +131,13 @@ class MultiheadDetection(nn.Module):
 
 
 class Segmentation(nn.Module):
-    def __init__(self, in_channels: Tuple[int], num_maskes: int):
+    def __init__(self, in_channels: Tuple[int], num_masks: int) -> None:
         super().__init__()
         first_neck, in_channels = in_channels
 
-        mask_neck = max(first_neck // 4, num_maskes)
+        mask_neck = max(first_neck // 4, num_masks)
         self.mask_conv = nn.Sequential(
-            Conv(in_channels, mask_neck, 3), Conv(mask_neck, mask_neck, 3), nn.Conv2d(mask_neck, num_maskes, 1)
+            Conv(in_channels, mask_neck, 3), Conv(mask_neck, mask_neck, 3), nn.Conv2d(mask_neck, num_masks, 1)
         )
 
     def forward(self, x: Tensor) -> Tuple[Tensor]:
@@ -148,15 +148,15 @@ class Segmentation(nn.Module):
 class MultiheadSegmentation(nn.Module):
     """Mutlihead Segmentation module for Dual segment or Triple segment"""
 
-    def __init__(self, in_channels: List[int], num_classes: int, num_maskes: int, **head_kwargs):
+    def __init__(self, in_channels: List[int], num_classes: int, num_masks: int, **head_kwargs) -> None:
         super().__init__()
         mask_channels, proto_channels = in_channels[:-1], in_channels[-1]
 
         self.detect = MultiheadDetection(mask_channels, num_classes, **head_kwargs)
         self.heads = nn.ModuleList(
-            [Segmentation((in_channels[0], in_channel), num_maskes) for in_channel in mask_channels]
+            [Segmentation((in_channels[0], in_channel), num_masks) for in_channel in mask_channels]
         )
-        self.heads.append(Conv(proto_channels, num_maskes, 1))
+        self.heads.append(Conv(proto_channels, num_masks, 1))
 
     def forward(self, x_list: List[torch.Tensor]) -> List[torch.Tensor]:
         return [head(x) for x, head in zip(x_list, self.heads)]
@@ -169,7 +169,7 @@ class Anchor2Vec(nn.Module):
         self.anc2vec = nn.Conv3d(in_channels=reg_max, out_channels=1, kernel_size=1, bias=False)
         self.anc2vec.weight = nn.Parameter(reverse_reg, requires_grad=False)
 
-    def forward(self, anchor_x: Tensor) -> Tensor:
+    def forward(self, anchor_x: Tensor) -> Tuple[Tensor, Tensor]:
         anchor_x = rearrange(anchor_x, "B (P R) h w -> B R P h w", P=4)
         vector_x = anchor_x.softmax(dim=1)
         vector_x = self.anc2vec(vector_x)[:, 0]
@@ -188,7 +188,7 @@ class RepConv(nn.Module):
         *,
         activation: Optional[str] = "SiLU",
         **kwargs,
-    ):
+    ) -> None:
         super().__init__()
         self.act = create_activation_function(activation)
         self.conv1 = Conv(in_channels, out_channels, kernel_size, activation=False, **kwargs)

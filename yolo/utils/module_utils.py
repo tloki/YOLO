@@ -1,5 +1,5 @@
 import inspect
-from typing import Tuple, Union
+from typing import Tuple, Union, Dict
 
 from torch import Tensor, nn
 from torch.nn.common_types import _size_2_t
@@ -20,7 +20,7 @@ def get_layer_map():
     return layer_map
 
 
-def auto_pad(kernel_size: _size_2_t, dilation: _size_2_t = 1, **kwargs) -> Tuple[int, int]:
+def auto_pad(kernel_size: _size_2_t, dilation: _size_2_t = 1, **kwargs: Dict) -> Tuple[int, int]:
     """
     Auto Padding for the convolution blocks
     """
@@ -31,7 +31,7 @@ def auto_pad(kernel_size: _size_2_t, dilation: _size_2_t = 1, **kwargs) -> Tuple
 
     pad_h = ((kernel_size[0] - 1) * dilation[0]) // 2
     pad_w = ((kernel_size[1] - 1) * dilation[1]) // 2
-    return (pad_h, pad_w)
+    return pad_h, pad_w
 
 
 def create_activation_function(activation: str) -> nn.Module:
